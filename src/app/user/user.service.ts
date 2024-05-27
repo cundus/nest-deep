@@ -1,26 +1,36 @@
-import { Injectable, Inject } from '@nestjs/common'
+import { Injectable, Inject, Logger } from '@nestjs/common'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
-import { User } from './entities/user.entity'
+import { PrismaService } from 'src/lib/db/prisma.service'
+import { user } from '@prisma/client'
 
 @Injectable()
 export class UserService {
-    constructor(
-        @Inject('USER_REPOSITORY') private userRepository: typeof User
-    ) {}
+    constructor(private prisma: PrismaService) {}
 
-    create(createUserDto: CreateUserDto) {
-        return this.userRepository.create<User>({
-            ...createUserDto,
-        })
+    async create(createUserDto: CreateUserDto) {
+        await this.prisma
+            .$executeRaw`INSERT INTO user(name,email,password,roleId)
+        VALUES
+        (
+            ${createUserDto.name},
+            ${createUserDto.email},
+            ${createUserDto.password},
+            ${createUserDto.role}
+        )
+        `
+
+        return 'Success Register'
     }
 
-    findAll() {
-        return this.userRepository.findAll<User>()
+    findAll() {}
+
+    async findOne(id: number) {
+        return id
     }
 
-    findOne(id: number) {
-        return `This action returns a #${id} user`
+    async findOneByEmail(email: string): Promise<user> {
+        return await this.prisma.user.findUnique({ where: { email } })
     }
 
     update(id: number, updateUserDto: UpdateUserDto) {

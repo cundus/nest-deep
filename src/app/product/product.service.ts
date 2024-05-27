@@ -1,26 +1,61 @@
-import { Injectable } from '@nestjs/common';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { Injectable } from '@nestjs/common'
+import { CreateProductDto } from './dto/create-product.dto'
+import { UpdateProductDto } from './dto/update-product.dto'
+import { CloudinaryService } from 'src/lib/config/cloudinary/cloudinary.service'
+import { PrismaService } from 'src/lib/db/prisma.service'
 
 @Injectable()
 export class ProductService {
-  create(createProductDto: CreateProductDto) {
-    return 'This action adds a new product';
-  }
+    constructor(
+        private cloudinary: CloudinaryService,
+        private prisma: PrismaService
+    ) {}
 
-  findAll() {
-    return `This action returns all product`;
-  }
+    async create(
+        createProductDto: CreateProductDto,
+        files: Array<Express.Multer.File>
+    ): Promise<CreateProductDto> {
+        const imageList: { url: string }[] = []
+        await Promise.all(
+            files.map(async (file) => {
+                const result = await this.cloudinary.uploadImage(file)
+                console.log(result)
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
-  }
+                imageList.push({
+                    url: result.secure_url,
+                })
+            })
+        )
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
-  }
+        const createdProduct = await this.prisma.product.create({
+            data: {
+                ...createProductDto,
+                price: Number(createProductDto.price),
+                images: {
+                    create: imageList,
+                },
+            },
+            include: {
+                images: true,
+            },
+        })
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
-  }
+        return createdProduct
+    }
+
+    findAll() {
+        return `This action returns all product`
+    }
+
+    findOne(id: number) {
+        return `This action returns a #${id} product`
+    }
+
+    update(id: number, updateProductDto: UpdateProductDto) {
+        return `This action updates a #${id} product`
+    }
+
+    remove(id: number) {
+        return `This action removes a #${id} product`
+    }
 }

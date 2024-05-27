@@ -1,34 +1,51 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { LoginDTO } from './dto/login.dto'
 import { CreateUserDto } from '../user/dto/create-user.dto'
-import { User } from '../user/entities/user.entity'
+import { UserService } from '../user/user.service'
+import { JwtService } from '@nestjs/jwt'
 
 @Injectable()
 export class AuthService {
     constructor(
-        @Inject('USER_REPOSITORY') private userRepository: typeof User
+        private userRepository: UserService,
+        private jwtService: JwtService
     ) {}
 
     async login(body: LoginDTO) {
-        const existedUser = await this.userRepository.findOne({
-            where: {
-                email: body.email,
-                password: body.password,
-            },
-        })
+        // TODO Implement login
+        const existedUser = await this.userRepository.findOneByEmail(body.email)
 
         if (!existedUser) {
             throw new NotFoundException('User not found')
         }
 
-        const token = existedUser.email
+        if (existedUser.password !== body.password) {
+            throw new NotFoundException('User not found')
+        }
 
-        return token
+        const token = await this.jwtService.signAsync({
+            email: existedUser.email,
+            id: existedUser.id,
+            role: existedUser.roleId,
+        })
+
+        // const token = existedUser.email
+        return { token }
     }
 
     async register(body: CreateUserDto) {
-        return this.userRepository.create({
-            ...body,
-        })
+        // TODO Implement register
+
+        const existedUser = await this.userRepository.findOneByEmail(body.email)
+
+        if (existedUser) {
+            throw new NotFoundException('User already exists')
+        }
+
+        return this.userRepository.create(body)
+
+        // return this.userRepository.create({
+        //     ...body,
+        // })
     }
 }
